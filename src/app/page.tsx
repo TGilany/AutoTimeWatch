@@ -35,6 +35,8 @@ const formSchema = z.object({
 
 export default function Home() {
 	const [apiResponse, setApiResponse] = useState<string | null>(null);
+	const [loginStatus, setLoginStatus] = useState<"idle" | "validating" | "success" | "error">("idle");
+	const [loginMessage, setLoginMessage] = useState<string>("");
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
@@ -47,6 +49,34 @@ export default function Home() {
 			month: "",
 		},
 	});
+
+	const validateLogin = async (values: z.infer<typeof formSchema>) => {
+		setLoginStatus("validating");
+		setLoginMessage("");
+		
+		try {
+			const response = await fetch("/api/timewatch", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ ...values, action: "login" }),
+			});
+			
+			const data = await response.json();
+			
+			if (response.ok) {
+				setLoginStatus("success");
+				setLoginMessage("Login successful! You can now perform punch actions.");
+			} else {
+				setLoginStatus("error");
+				setLoginMessage(data.error || "Login failed. Please check your credentials.");
+			}
+		} catch {
+			setLoginStatus("error");
+			setLoginMessage("Network error. Please try again.");
+		}
+	};
 
 	const onSubmit = async (
 		values: z.infer<typeof formSchema>,
@@ -126,6 +156,33 @@ export default function Home() {
 										)}
 									/>
 								</div>
+								
+								{/* Login Validation Section */}
+								<div className="border-t pt-6">
+									<div className="flex flex-col items-center gap-4">
+										<Button
+											type="button"
+											variant="secondary"
+											onClick={form.handleSubmit(validateLogin)}
+											disabled={loginStatus === "validating"}
+										>
+											{loginStatus === "validating" ? "Validating..." : "Test Login"}
+										</Button>
+										
+										{loginMessage && (
+											<div className={`text-sm text-center p-3 rounded-md ${
+												loginStatus === "success" 
+													? "bg-green-100 text-green-800 border border-green-200" 
+													: loginStatus === "error"
+													? "bg-red-100 text-red-800 border border-red-200"
+													: ""
+											}`}>
+												{loginMessage}
+											</div>
+										)}
+									</div>
+								</div>
+								
 								<Tabs defaultValue="punchAll" className="w-full">
 									<TabsList className="grid w-full grid-cols-2">
 										<TabsTrigger value="punchAll">Punch All</TabsTrigger>
